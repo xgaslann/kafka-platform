@@ -224,3 +224,41 @@ resource "aws_instance" "platform" {
 
   depends_on = [aws_instance.kafka_controller, aws_instance.kafka_broker]
 }
+
+// Kafka Connect instance
+resource "aws_instance" "kafka_connect" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = var.connect_instance_type
+  subnet_id              = var.public_subnet_ids[0]
+  vpc_security_group_ids = [aws_security_group.kafka_cluster.id]
+  key_name               = var.key_name
+
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = 30
+    encrypted             = true
+    delete_on_termination = true
+
+    tags = {
+      Name = "${var.project_name}-kafka-connect-root"
+    }
+  }
+
+  user_data = base64encode(templatefile("${path.module}/scripts/user-data-connect.sh", {
+    hostname     = "kafka-connect"
+    project_name = var.project_name
+  }))
+
+  tags = {
+    Name        = "${var.project_name}-kafka-connect"
+    Project     = var.project_name
+    Environment = var.environment
+    Role        = "kafka-connect"
+  }
+
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
+  depends_on = [aws_instance.kafka_controller, aws_instance.kafka_broker]
+}

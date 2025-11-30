@@ -90,6 +90,12 @@ variable "platform_instance_type" {
   default     = "t3.small"
 }
 
+variable "connect_instance_type" {
+  description = "EC2 instance type for Kafka Connect"
+  type        = string
+  default     = "t3.small"
+}
+
 variable "spot_max_price" {
   description = "Maximum price for spot instances ($/hour)"
   type        = string

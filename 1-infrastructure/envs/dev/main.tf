@@ -5,20 +5,19 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    external = {
-      source  = "hashicorp/external"
-      version = "~> 2.0"
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.0"
     }
   }
 }
 
-data "external" "my_ip" {
-  working_dir = "${path.module}/scripts"
-  program = ["./get_ip.sh"]
+data "http" "my_ip" {
+  url = "https://api.ipify.org?format=text"
 }
 
 locals {
-  my_ip = "${data.external.my_ip.result.ip}/32"
+  my_ip = "${chomp(data.http.my_ip.response_body)}/32"
 }
 
 provider "aws" {
@@ -49,6 +48,7 @@ module "compute" {
   vpc_id                   = module.network.vpc_id
   vpc_cidr                 = module.network.vpc_cidr
   public_subnet_ids        = module.network.public_subnet_ids
+  public_subnet_cidrs      = module.network.public_subnet_cidrs
   key_name                 = var.key_name
   broker_count             = var.broker_count
   broker_instance_type     = var.broker_instance_type
