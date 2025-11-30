@@ -8,6 +8,17 @@ variable "controller_ips" {
   ]
 }
 
+variable "public_subnet_cidrs" {
+  description = "CIDR blocks for public subnets"
+  type        = list(string)
+}
+
+variable "controller_ip_offset" {
+  description = "IP offset for controllers (e.g., 10 for .10)"
+  type        = number
+  default     = 10
+}
+
 variable "project_name" {
   description = "Project name for resource naming"
   type        = string

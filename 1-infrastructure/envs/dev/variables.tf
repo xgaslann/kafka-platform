@@ -81,3 +81,39 @@ variable "public_api_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+variable "spot_price_per_hour" {
+  description = "Estimated spot price per hour (USD)"
+  type        = number
+  default     = 0.0062
+}
+
+variable "ebs_price_per_gb" {
+  description = "EBS gp3 price per GB per month (USD)"
+  type        = number
+  default     = 0.10
+}
+
+variable "hours_per_month" {
+  description = "Hours in a month for cost calculation"
+  type        = number
+  default     = 730
+}
+
+variable "broker_ebs_size" {
+  description = "EBS volume size for brokers (GB)"
+  type        = number
+  default     = 20
+}
+
+variable "controller_ebs_size" {
+  description = "EBS volume size for controllers (GB)"
+  type        = number
+  default     = 15
+}
+
+variable "platform_ebs_size" {
+  description = "EBS volume size for platform (GB)"
+  type        = number
+  default     = 30
+}

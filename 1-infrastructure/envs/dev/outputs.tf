@@ -90,21 +90,26 @@ output "monthly_cost_estimate" {
   description = "Estimated monthly cost (USD)"
   value = {
     compute = {
-      brokers_spot     = format("$%.2f", var.broker_count * 0.0062 * 730)
-      controllers_spot = format("$%.2f", var.controller_count * 0.0062 * 730)
-      platform_spot    = format("$%.2f", 0.0062 * 730)
-      total_compute    = format("$%.2f", (var.broker_count + var.controller_count + 1) * 0.0062 * 730)
+      brokers_spot     = format("$%.2f", var.broker_count * var.spot_price_per_hour * var.hours_per_month)
+      controllers_spot = format("$%.2f", var.controller_count * var.spot_price_per_hour * var.hours_per_month)
+      platform_spot    = format("$%.2f", var.spot_price_per_hour * var.hours_per_month)
+      total_compute    = format("$%.2f", (var.broker_count + var.controller_count + 1) * var.spot_price_per_hour * var.hours_per_month)
     }
     storage = {
-      brokers_ebs     = format("$%.2f", var.broker_count * 20 * 0.10)
-      controllers_ebs = format("$%.2f", var.controller_count * 15 * 0.10)
-      platform_ebs    = format("$%.2f", 30 * 0.10)
-      total_storage   = format("$%.2f", (var.broker_count * 20 + var.controller_count * 15 + 30) * 0.10)
+      brokers_ebs     = format("$%.2f", var.broker_count * var.broker_ebs_size * var.ebs_price_per_gb)
+      controllers_ebs = format("$%.2f", var.controller_count * var.controller_ebs_size * var.ebs_price_per_gb)
+      platform_ebs    = format("$%.2f", var.platform_ebs_size * var.ebs_price_per_gb)
+      total_storage   = format("$%.2f", (var.broker_count * var.broker_ebs_size + var.controller_count * var.controller_ebs_size + var.platform_ebs_size) * var.ebs_price_per_gb)
     }
     total = format("$%.2f",
-      (var.broker_count + var.controller_count + 1) * 0.0062 * 730 +
-      (var.broker_count * 20 + var.controller_count * 15 + 30) * 0.10
+      (var.broker_count + var.controller_count + 1) * var.spot_price_per_hour * var.hours_per_month +
+      (var.broker_count * var.broker_ebs_size + var.controller_count * var.controller_ebs_size + var.platform_ebs_size) * var.ebs_price_per_gb
     )
-    notes = "Spot prices are estimates. Actual cost may vary. Data transfer not included."
+    pricing_config = {
+      spot_price_per_hour = var.spot_price_per_hour
+      ebs_price_per_gb    = var.ebs_price_per_gb
+      hours_per_month     = var.hours_per_month
+    }
+    notes = "Spot prices are estimates. Actual cost may vary. Data transfer not included. Update pricing variables to reflect current rates."
   }
 }
