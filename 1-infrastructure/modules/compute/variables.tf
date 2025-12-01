@@ -82,6 +82,11 @@ variable "controller_instance_type" {
   type        = string
 }
 
+variable "kafka_connect_instance_type" {
+  description = "EC2 instance type for Kafka Connect node"
+  type        = string
+}
+
 variable "platform_instance_type" {
   description = "EC2 instance type for platform node"
   type        = string

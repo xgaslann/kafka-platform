@@ -26,6 +26,12 @@ output "infrastructure_summary" {
       public_ips   = module.compute.controller_public_ips
     }
 
+    kafka_connect = {
+      instance_id = module.compute.kafka_connect_instance_id
+      private_ip  = module.compute.kafka_connect_private_ip
+      public_ip   = module.compute.kafka_connect_public_ip
+    }
+
     platform = {
       instance_id = module.compute.platform_instance_id
       private_ip  = module.compute.platform_private_ip
@@ -45,6 +51,7 @@ output "ssh_commands" {
       for idx, ip in module.compute.controller_public_ips :
       "ssh -i ~/.ssh/kafka-platform-key ubuntu@${ip}  # controller-${idx + 1}"
     ]
+    kafka_connect = "ssh -i ~/.ssh/kafka-platform-key ubuntu@${module.compute.kafka_connect_public_ip}  # kafka-connect"
     platform = "ssh -i ~/.ssh/kafka-platform-key ubuntu@${module.compute.platform_public_ip}  # platform"
   }
 }
@@ -71,6 +78,15 @@ output "ansible_inventory" {
           ansible_host  = module.compute.controller_public_ips[idx]
           private_ip    = module.compute.controller_private_ips[idx]
           controller_id = idx + 1
+        }
+      }
+    }
+
+    kafka_connect = {
+      hosts = {
+        kafka_connect = {
+          ansible_host = module.compute.kafka_connect_public_ip
+          private_ip   = module.compute.kafka_connect_private_ip
         }
       }
     }

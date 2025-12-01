@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 set -x
 
@@ -67,82 +66,9 @@ chown -R kafka:kafka /var/lib/kafka
 chown -R kafka:kafka /var/log/kafka
 chown -R kafka:kafka /opt/kafka
 
+echo "Setting environment variables for Kafka"
 echo "BROKER_ID=${broker_id}" >> /etc/environment
 echo "RACK_ID=${rack_id}" >> /etc/environment
-
-echo "Downloading Kafka 4.1.0"
-cd /tmp
-wget -q https://downloads.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
-
-echo "Extracting Kafka"
-tar -xzf kafka_2.13-4.1.0.tgz -C /opt/kafka --strip-components=1
-chown -R kafka:kafka /opt/kafka
-
-echo "Getting instance private IP from metadata"
-BROKER_PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
-echo "Broker private IP: $BROKER_PRIVATE_IP"
-
-echo "Creating Kafka broker configuration"
-cat > /opt/kafka/config/kraft/broker.properties << EOF
-process.roles=broker
-node.id=${broker_id}
-controller.quorum.voters=${controller_quorum_voters}
-controller.listener.names=CONTROLLER
-listeners=PLAINTEXT://:9092
-advertised.listeners=PLAINTEXT://$BROKER_PRIVATE_IP:9092
-listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-inter.broker.listener.name=PLAINTEXT
-log.dirs=/var/lib/kafka/data
-num.network.threads=3
-num.io.threads=8
-socket.send.buffer.bytes=102400
-socket.receive.buffer.bytes=102400
-socket.request.max.bytes=104857600
-num.partitions=3
-num.recovery.threads.per.data.dir=1
-offsets.topic.replication.factor=3
-transaction.state.log.replication.factor=3
-transaction.state.log.min.isr=2
-log.retention.hours=168
-log.segment.bytes=1073741824
-log.retention.check.interval.ms=300000
-broker.rack=${rack_id}
-EOF
-
-chown kafka:kafka /opt/kafka/config/kraft/broker.properties
-
-echo "Creating systemd service"
-cat > /etc/systemd/system/kafka-broker.service << 'EOF'
-[Unit]
-Description=Apache Kafka Broker
-After=network.target
-
-[Service]
-Type=simple
-User=kafka
-Group=kafka
-Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
-Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="KAFKA_HEAP_OPTS=-Xmx1G -Xms1G"
-Environment="KAFKA_JVM_PERFORMANCE_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20"
-ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/broker.properties
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=kafka-broker
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-echo "Formatting Kafka storage"
-sudo -u kafka bash -c "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && /opt/kafka/bin/kafka-storage.sh format -t ${kafka_cluster_id} -c /opt/kafka/config/kraft/broker.properties"
-
-echo "Enabling and starting Kafka broker service"
-systemctl daemon-reload
-systemctl enable kafka-broker
-systemctl start kafka-broker
 
 echo "User data script completed successfully"
 touch /var/log/user-data-completed

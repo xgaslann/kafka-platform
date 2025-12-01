@@ -42,20 +42,22 @@ module "network" {
 }
 
 module "compute" {
-  source                   = "../../modules/compute"
-  project_name             = var.project_name
-  environment              = var.environment
-  vpc_id                   = module.network.vpc_id
-  vpc_cidr                 = module.network.vpc_cidr
-  public_subnet_ids        = module.network.public_subnet_ids
-  public_subnet_cidrs      = module.network.public_subnet_cidrs
-  key_name                 = var.key_name
-  broker_count             = var.broker_count
-  broker_instance_type     = var.broker_instance_type
-  controller_count         = var.controller_count
-  controller_instance_type = var.controller_instance_type
-  platform_instance_type   = var.platform_instance_type
-  spot_max_price           = var.spot_max_price
+  source                      = "../../modules/compute"
+  project_name                = var.project_name
+  environment                 = var.environment
+  vpc_id                      = module.network.vpc_id
+  vpc_cidr                    = module.network.vpc_cidr
+  public_subnet_ids           = module.network.public_subnet_ids
+  public_subnet_cidrs         = module.network.public_subnet_cidrs
+  key_name                    = var.key_name
+  broker_count                = var.broker_count
+  broker_instance_type        = var.broker_instance_type
+  controller_count            = var.controller_count
+  controller_instance_type    = var.controller_instance_type
+  kafka_connect_instance_type = var.kafka_connect_instance_type
+  platform_instance_type      = var.platform_instance_type
+  spot_max_price              = var.spot_max_price
+  controller_ips              = var.controller_ips
 
   admin_cidr_blocks      = coalescelist(var.admin_cidr_blocks, [local.my_ip])
   public_api_cidr_blocks = var.public_api_cidr_blocks

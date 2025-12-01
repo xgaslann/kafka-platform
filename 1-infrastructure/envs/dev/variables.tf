@@ -56,6 +56,11 @@ variable "controller_instance_type" {
   type        = string
 }
 
+variable "kafka_connect_instance_type" {
+  description = "Kafka Connect instance type"
+  type        = string
+}
+
 variable "platform_instance_type" {
   description = "Platform node instance type"
   type        = string
@@ -113,4 +118,14 @@ variable "platform_ebs_size" {
   description = "EBS volume size for platform (GB)"
   type        = number
   default     = 30
+}
+
+variable "controller_ips" {
+  description = "Static IPs for Kafka controllers (required for KRaft quorum)"
+  type        = list(string)
+  default = [
+    "10.0.101.10",
+    "10.0.102.10",
+    "10.0.103.10"
+  ]
 }

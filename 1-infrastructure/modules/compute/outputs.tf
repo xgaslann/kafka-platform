@@ -28,6 +28,21 @@ output "controller_public_ips" {
   value       = [for controller in aws_instance.kafka_controller : controller.public_ip]
 }
 
+output "kafka_connect_instance_id" {
+  description = "Kafka Connect node instance ID"
+  value       = aws_instance.kafka_connect.id
+}
+
+output "kafka_connect_private_ip" {
+  description = "Kafka Connect node private IP"
+  value       = aws_instance.kafka_connect.private_ip
+}
+
+output "kafka_connect_public_ip" {
+  description = "Kafka Connect node public IP"
+  value       = aws_instance.kafka_connect.public_ip
+}
+
 output "platform_instance_id" {
   description = "Platform node instance ID"
   value       = aws_instance.platform.id

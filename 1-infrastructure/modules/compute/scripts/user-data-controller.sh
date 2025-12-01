@@ -1,5 +1,4 @@
 #!/bin/bash
-# shellcheck disable=SC2154
 set -e
 set -x
 
@@ -59,7 +58,7 @@ echo "Creating kafka user"
 useradd -r -s /bin/bash -d /opt/kafka kafka
 
 echo "Creating Kafka directories"
-mkdir -p /var/lib/kafka/data
+mkdir -p /var/lib/kafka/metadata
 mkdir -p /var/log/kafka
 mkdir -p /opt/kafka
 
@@ -67,77 +66,8 @@ chown -R kafka:kafka /var/lib/kafka
 chown -R kafka:kafka /var/log/kafka
 chown -R kafka:kafka /opt/kafka
 
+echo "Setting environment variable for Controller"
 echo "CONTROLLER_ID=${controller_id}" >> /etc/environment
-
-echo "Downloading Kafka 4.1.0"
-cd /tmp
-wget -q https://downloads.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
-
-echo "Extracting Kafka"
-tar -xzf kafka_2.13-4.1.0.tgz -C /opt/kafka --strip-components=1
-chown -R kafka:kafka /opt/kafka
-
-echo "Creating Kafka config directory"
-mkdir -p /opt/kafka/config/kraft
-chown -R kafka:kafka /opt/kafka/config
-
-CONTROLLER_ID_VALUE=${controller_id}
-CONTROLLER_QUORUM_VOTERS="${controller_quorum_voters}"
-
-PRIVATE_IP=$(hostname -I | awk '{print $1}')
-
-echo "Creating Kafka controller configuration"
-cat > /opt/kafka/config/kraft/controller.properties << EOF
-process.roles=controller
-node.id=$CONTROLLER_ID_VALUE
-controller.quorum.voters=$CONTROLLER_QUORUM_VOTERS
-listeners=CONTROLLER://0.0.0.0:9093
-advertised.listeners=CONTROLLER://$PRIVATE_IP:9093
-controller.listener.names=CONTROLLER
-listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-log.dirs=/var/lib/kafka/data
-num.network.threads=3
-num.io.threads=8
-socket.send.buffer.bytes=102400
-socket.receive.buffer.bytes=102400
-socket.request.max.bytes=104857600
-EOF
-
-chown kafka:kafka /opt/kafka/config/kraft/controller.properties
-
-echo "Creating systemd service"
-cat > /etc/systemd/system/kafka-controller.service << 'EOF'
-[Unit]
-Description=Apache Kafka Controller
-After=network.target
-
-[Service]
-Type=simple
-User=kafka
-Group=kafka
-Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
-Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-Environment="KAFKA_HEAP_OPTS=-Xmx512M -Xms512M"
-Environment="KAFKA_JVM_PERFORMANCE_OPTS=-XX:+UseG1GC -XX:MaxGCPauseMillis=20"
-ExecStart=/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/controller.properties
-Restart=on-failure
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=kafka-controller
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-echo "Formatting Kafka storage"
-KAFKA_CLUSTER_ID="${kafka_cluster_id}"
-sudo -u kafka bash -c "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && /opt/kafka/bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c /opt/kafka/config/kraft/controller.properties"
-
-echo "Enabling and starting Kafka controller service"
-systemctl daemon-reload
-systemctl enable kafka-controller
-systemctl start kafka-controller
 
 echo "User data script completed successfully"
 touch /var/log/user-data-completed
