@@ -3,6 +3,9 @@
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+*.tfplan
+tfplan
+plan.json
 *.tfvars
 *.tfvars.json
 crash.log
@@ -17,6 +20,8 @@ ansible.cfg
 .ansible/
 /site/
 .vault_pass
+*.vault
+vault.yml
 
 # Golang
 /bin/
@@ -29,6 +34,9 @@ ansible.cfg
 *.test
 *.out
 go.work
+coverage.out
+coverage.html
+*.coverprofile
 
 # GoLand IDE
 .idea/
@@ -40,6 +48,15 @@ go.work
 # AWS
 .aws/credentials
 *.pem
+*.key
+
+# Kubernetes
+kubeconfig*
+*.kubeconfig
+
+# JMX/Kafka Credentials
+jmxremote.password
+jmxremote.access
 
 # Docker
 docker-compose.override.yml
