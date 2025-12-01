@@ -43,7 +43,6 @@ variable "broker_count" {
 variable "broker_instance_type" {
   description = "Broker instance type"
   type        = string
-  default     = "t3.small"
 }
 
 variable "controller_count" {
@@ -55,13 +54,11 @@ variable "controller_count" {
 variable "controller_instance_type" {
   description = "Controller instance type"
   type        = string
-  default     = "t3.small"
 }
 
 variable "platform_instance_type" {
   description = "Platform node instance type"
   type        = string
-  default     = "t3.small"
 }
 
 variable "spot_max_price" {
@@ -73,7 +70,7 @@ variable "spot_max_price" {
 variable "admin_cidr_blocks" {
   description = "CIDR blocks for admin access (SSH, Grafana, Prometheus)"
   type        = list(string)
-  default = []
+  default     = []
 }
 
 variable "public_api_cidr_blocks" {

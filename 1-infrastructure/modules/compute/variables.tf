@@ -2,9 +2,9 @@ variable "controller_ips" {
   description = "Static IPs for Kafka controllers (required for KRaft quorum)"
   type        = list(string)
   default = [
-    "10.0.0.10",
-    "10.0.1.10",
-    "10.0.2.10"
+    "10.0.101.10",
+    "10.0.102.10",
+    "10.0.103.10"
   ]
 }
 
@@ -64,7 +64,6 @@ variable "broker_count" {
 variable "broker_instance_type" {
   description = "EC2 instance type for brokers"
   type        = string
-  default     = "t3.small"
 }
 
 variable "controller_count" {
@@ -81,19 +80,11 @@ variable "controller_count" {
 variable "controller_instance_type" {
   description = "EC2 instance type for controllers"
   type        = string
-  default     = "t3.small"
 }
 
 variable "platform_instance_type" {
   description = "EC2 instance type for platform node"
   type        = string
-  default     = "t3.small"
-}
-
-variable "connect_instance_type" {
-  description = "EC2 instance type for Kafka Connect"
-  type        = string
-  default     = "t3.small"
 }
 
 variable "spot_max_price" {

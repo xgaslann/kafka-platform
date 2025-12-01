@@ -67,16 +67,20 @@ chown -R kafka:kafka /var/lib/kafka
 chown -R kafka:kafka /var/log/kafka
 chown -R kafka:kafka /opt/kafka
 
-
 echo "CONTROLLER_ID=${controller_id}" >> /etc/environment
 
-echo "Downloading Kafka 3.9.0"
+echo "Downloading Kafka 4.1.0"
 cd /tmp
-wget -q https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
+wget -q https://downloads.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
 
 echo "Extracting Kafka"
-tar -xzf kafka_2.13-3.9.0.tgz -C /opt/kafka --strip-components=1
+tar -xzf kafka_2.13-4.1.0.tgz -C /opt/kafka --strip-components=1
 chown -R kafka:kafka /opt/kafka
+
+# 🔥 DÜZELTİLEN BÖLÜM: Config dizinini oluştur
+echo "Creating Kafka config directory"
+mkdir -p /opt/kafka/config/kraft
+chown -R kafka:kafka /opt/kafka/config
 
 CONTROLLER_ID_VALUE=${controller_id}
 CONTROLLER_QUORUM_VOTERS="${controller_quorum_voters}"

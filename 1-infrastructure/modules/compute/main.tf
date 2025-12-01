@@ -1,6 +1,4 @@
 locals {
-
-
   controller_quorum_voters = join(",", [
     for i in range(var.controller_count) :
     "${i + 1}@${var.controller_ips[i]}:9093"
@@ -121,7 +119,7 @@ resource "aws_instance" "kafka_broker" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/scripts/user-data-broker.sh", {
+  user_data_base64 = base64encode(templatefile("${path.module}/scripts/user-data-broker.sh", {
     hostname                 = "broker-${count.index + 1}"
     broker_id                = count.index + 4
     rack_id                  = "az-${(count.index % 3) + 1}"
@@ -166,7 +164,7 @@ resource "aws_instance" "kafka_controller" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/scripts/user-data-controller.sh", {
+  user_data_base64 = base64encode(templatefile("${path.module}/scripts/user-data-controller.sh", {
     hostname                 = "controller-${count.index + 1}"
     controller_id            = count.index + 1
     controller_quorum_voters = local.controller_quorum_voters
@@ -205,7 +203,7 @@ resource "aws_instance" "platform" {
     }
   }
 
-  user_data = base64encode(templatefile("${path.module}/scripts/user-data-platform.sh", {
+  user_data_base64 = base64encode(templatefile("${path.module}/scripts/user-data-platform.sh", {
     hostname     = "platform"
     project_name = var.project_name
   }))
@@ -216,44 +214,6 @@ resource "aws_instance" "platform" {
     Environment = var.environment
     Role        = "platform"
     Services    = "monitoring,kafka-connect,rest-api"
-  }
-
-  lifecycle {
-    ignore_changes = [ami]
-  }
-
-  depends_on = [aws_instance.kafka_controller, aws_instance.kafka_broker]
-}
-
-// Kafka Connect instance
-resource "aws_instance" "kafka_connect" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = var.connect_instance_type
-  subnet_id              = var.public_subnet_ids[0]
-  vpc_security_group_ids = [aws_security_group.kafka_cluster.id]
-  key_name               = var.key_name
-
-  root_block_device {
-    volume_type           = "gp3"
-    volume_size           = 30
-    encrypted             = true
-    delete_on_termination = true
-
-    tags = {
-      Name = "${var.project_name}-kafka-connect-root"
-    }
-  }
-
-  user_data = base64encode(templatefile("${path.module}/scripts/user-data-connect.sh", {
-    hostname     = "kafka-connect"
-    project_name = var.project_name
-  }))
-
-  tags = {
-    Name        = "${var.project_name}-kafka-connect"
-    Project     = var.project_name
-    Environment = var.environment
-    Role        = "kafka-connect"
   }
 
   lifecycle {

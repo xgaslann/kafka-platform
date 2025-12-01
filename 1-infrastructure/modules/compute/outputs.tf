@@ -47,18 +47,3 @@ output "security_group_id" {
   description = "Security group ID"
   value       = aws_security_group.kafka_cluster.id
 }
-
-output "kafka_connect_instance_id" {
-  description = "Kafka Connect instance ID"
-  value       = aws_instance.kafka_connect.id
-}
-
-output "kafka_connect_private_ip" {
-  description = "Kafka Connect private IP"
-  value       = aws_instance.kafka_connect.private_ip
-}
-
-output "kafka_connect_public_ip" {
-  description = "Kafka Connect public IP"
-  value       = aws_instance.kafka_connect.public_ip
-}

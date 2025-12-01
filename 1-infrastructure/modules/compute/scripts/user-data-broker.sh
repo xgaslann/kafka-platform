@@ -70,12 +70,12 @@ chown -R kafka:kafka /opt/kafka
 echo "BROKER_ID=${broker_id}" >> /etc/environment
 echo "RACK_ID=${rack_id}" >> /etc/environment
 
-echo "Downloading Kafka 3.9.0"
+echo "Downloading Kafka 4.1.0"
 cd /tmp
-wget -q https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
+wget -q https://downloads.apache.org/kafka/4.1.0/kafka_2.13-4.1.0.tgz
 
 echo "Extracting Kafka"
-tar -xzf kafka_2.13-3.9.0.tgz -C /opt/kafka --strip-components=1
+tar -xzf kafka_2.13-4.1.0.tgz -C /opt/kafka --strip-components=1
 chown -R kafka:kafka /opt/kafka
 
 echo "Getting instance private IP from metadata"

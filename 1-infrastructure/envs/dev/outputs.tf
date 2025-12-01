@@ -46,7 +46,6 @@ output "ssh_commands" {
       "ssh -i ~/.ssh/kafka-platform-key ubuntu@${ip}  # controller-${idx + 1}"
     ]
     platform = "ssh -i ~/.ssh/kafka-platform-key ubuntu@${module.compute.platform_public_ip}  # platform"
-    kafka_connect = "ssh -i ~/.ssh/kafka-platform-key ubuntu@${module.compute.kafka_connect_public_ip}  # kafka-connect"
   }
 }
 
@@ -112,14 +111,5 @@ output "monthly_cost_estimate" {
       hours_per_month     = var.hours_per_month
     }
     notes = "Spot prices are estimates. Actual cost may vary. Data transfer not included. Update pricing variables to reflect current rates."
-  }
-}
-
-output "kafka_connect" {
-  description = "Kafka Connect instance details"
-  value = {
-    instance_id = module.compute.kafka_connect_instance_id
-    private_ip  = module.compute.kafka_connect_private_ip
-    public_ip   = module.compute.kafka_connect_public_ip
   }
 }
