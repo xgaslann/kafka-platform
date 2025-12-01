@@ -77,7 +77,6 @@ echo "Extracting Kafka"
 tar -xzf kafka_2.13-4.1.0.tgz -C /opt/kafka --strip-components=1
 chown -R kafka:kafka /opt/kafka
 
-# 🔥 DÜZELTİLEN BÖLÜM: Config dizinini oluştur
 echo "Creating Kafka config directory"
 mkdir -p /opt/kafka/config/kraft
 chown -R kafka:kafka /opt/kafka/config
@@ -85,12 +84,15 @@ chown -R kafka:kafka /opt/kafka/config
 CONTROLLER_ID_VALUE=${controller_id}
 CONTROLLER_QUORUM_VOTERS="${controller_quorum_voters}"
 
+PRIVATE_IP=$(hostname -I | awk '{print $1}')
+
 echo "Creating Kafka controller configuration"
 cat > /opt/kafka/config/kraft/controller.properties << EOF
 process.roles=controller
 node.id=$CONTROLLER_ID_VALUE
 controller.quorum.voters=$CONTROLLER_QUORUM_VOTERS
-listeners=CONTROLLER://:9093
+listeners=CONTROLLER://0.0.0.0:9093
+advertised.listeners=CONTROLLER://$PRIVATE_IP:9093
 controller.listener.names=CONTROLLER
 listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
 log.dirs=/var/lib/kafka/data
