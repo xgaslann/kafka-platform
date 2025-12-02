@@ -251,6 +251,73 @@ cat /etc/hosts | grep -E 'controller|broker'
 kafka-metadata-quorum --bootstrap-server localhost:9091 describe --status
 ```
 
+## Issue 9: REST API DNS Resolution Error
+
+**Symptom:**
+```
+Failed to resolve 'broker-1:9092': Try again
+```
+
+**Cause:**
+Kafka brokers return hostnames (broker-1, broker-2, broker-3) in metadata response via `advertised.listeners`. The platform node cannot resolve these hostnames.
+
+**Solution:**
+
+Option 1 - Use existing fix-hosts playbook:
+```bash
+ansible-playbook -i inventory/hosts.yml playbooks/fix-hosts.yml
+```
+
+Option 2 - Manual addition to platform node:
+```bash
+ssh -i ~/.ssh/kafka-platform-key ubuntu@<PLATFORM_IP> "sudo tee -a /etc/hosts << EOF
+10.0.101.166 broker-1
+10.0.102.239 broker-2
+10.0.103.53 broker-3
+10.0.101.10 controller-1
+10.0.102.10 controller-2
+10.0.103.10 controller-3
+EOF"
+```
+
+Option 3 - Add task to kafka-admin-api.yml playbook:
+```yaml
+- name: Add broker hostnames to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}"
+  loop:
+    - "10.0.101.166 broker-1"
+    - "10.0.102.239 broker-2"
+    - "10.0.103.53 broker-3"
+```
+
+After fixing, restart the container:
+```bash
+docker restart kafka-admin-api
+```
+
+**Verification:**
+```bash
+curl http://<PLATFORM_IP>:2020/brokers
+# Should return broker list without timeout
+```
+
+## Issue 10: REST API Metadata Timeout
+
+**Symptom:**
+```json
+{"error":"get metadata: Local: Timed out"}
+```
+
+**Cause:** Docker container cannot reach Kafka brokers.
+
+**Solution:**
+Run container with `--network host`:
+```bash
+docker run -d --network host -e KAFKA_BOOTSTRAP_SERVERS=... kafka-admin-api:1.0.0
+```
+
 ---
 
 ## Checklist Before Running Playbook

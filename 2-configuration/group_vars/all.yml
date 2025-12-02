@@ -1,3 +1,9 @@
+## NOTE: SASL_SSL config exists below but is not currently active.
+## Cluster runs with PLAINTEXT. To enable SASL_SSL:
+## 1. Configure kafka_broker_listeners and kafka_controller_listeners
+## 2. Run cp-ansible playbook to generate SSL certificates
+## See docs/02-kafka-cluster.md for details.
+
 ## Confluent Platform Version
 confluent_package_version: "8.1.0"
 
@@ -59,3 +65,23 @@ installation_method: package
 
 ## Python Interpreter
 ansible_python_interpreter: /usr/bin/python3
+
+## Listener Configuration for SASL_SSL
+kafka_broker_listeners:
+  internal:
+    name: INTERNAL
+    port: 9092
+    ssl_enabled: true
+    sasl_protocol: scram512
+  broker:
+    name: BROKER
+    port: 9091
+    ssl_enabled: true
+    sasl_protocol: scram512
+
+kafka_controller_listeners:
+  controller:
+    name: CONTROLLER
+    port: 9093
+    ssl_enabled: true
+    sasl_protocol: scram512

@@ -1,0 +1,62 @@
+---
+- name: Deploy Kafka Admin API
+  hosts: platform
+  become: true
+
+  vars:
+    api_image: kafka-admin-api:1.0.0
+    api_port: 2020
+    kafka_bootstrap: "10.0.101.166:9092,10.0.102.239:9092,10.0.103.53:9092"
+
+  tasks:
+    - name: Add broker hostnames to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+      loop:
+        - "10.0.101.166 broker-1"
+        - "10.0.102.239 broker-2"
+        - "10.0.103.53 broker-3"
+
+    - name: Create app directory
+      file:
+        path: /opt/kafka-admin-api
+        state: directory
+        mode: '0755'
+
+    - name: Copy source code
+      copy:
+        src: ../../3-services/kafka-admin-api/
+        dest: /opt/kafka-admin-api/
+        mode: '0644'
+
+    - name: Build Docker image
+      shell: |
+        cd /opt/kafka-admin-api
+        docker build -t {{ api_image }} .
+
+    - name: Stop existing container
+      shell: docker stop kafka-admin-api || true
+      ignore_errors: true
+
+    - name: Remove existing container
+      shell: docker rm kafka-admin-api || true
+      ignore_errors: true
+
+    - name: Run container
+      shell: |
+        docker run -d \
+          --name kafka-admin-api \
+          --restart unless-stopped \
+          --network host \
+          -e KAFKA_BOOTSTRAP_SERVERS={{ kafka_bootstrap }} \
+          {{ api_image }}
+
+    - name: Wait for API to be ready
+      uri:
+        url: "http://localhost:{{ api_port }}/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 3
