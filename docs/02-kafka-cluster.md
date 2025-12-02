@@ -6,16 +6,22 @@
 
 Kafka cluster is deployed using Confluent's official Ansible collection (cp-ansible). The cluster runs in KRaft mode - no ZooKeeper dependency. This is the new standard for Kafka 4.x and beyond.
 
-Security is configured with SASL_SSL and SCRAM-SHA-512 authentication. Self-signed certificates are used for development, but the setup is ready for proper CA certificates in production.
-
-Sensitive credentials are stored in Ansible Vault.
+Currently running with PLAINTEXT security for development. SASL_SSL configuration exists in group_vars but requires additional SSL certificate setup to enable.
 
 ## Overview
 
 - Confluent Platform 8.1.0 (Kafka 4.1.0)
 - KRaft mode
 - 3 Controllers + 3 Brokers
-- SASL_SSL + SCRAM-SHA-512
+- Security: PLAINTEXT (SASL_SSL ready in config)
+
+## Listeners
+
+| Listener | Port | Protocol |
+|----------|------|----------|
+| INTERNAL | 9092 | PLAINTEXT |
+| BROKER | 9091 | PLAINTEXT |
+| CONTROLLER | 9093 | PLAINTEXT |
 
 ## Version Requirements
 
