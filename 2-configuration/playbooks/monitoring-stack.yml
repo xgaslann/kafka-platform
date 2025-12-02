@@ -1,0 +1,24 @@
+---
+- name: Deploy monitoring stack to platform node
+  hosts: platform
+  become: true
+
+  tasks:
+    - name: Create monitoring directory
+      file:
+        path: /opt/monitoring
+        state: directory
+        mode: '0755'
+
+    - name: Copy monitoring stack files
+      copy:
+        src: ../../4-platform/monitoring-stack/
+        dest: /opt/monitoring/
+        mode: '0644'
+
+    - name: Start monitoring stack
+      shell: |
+        cd /opt/monitoring
+        docker compose up -d
+      args:
+        chdir: /opt/monitoring

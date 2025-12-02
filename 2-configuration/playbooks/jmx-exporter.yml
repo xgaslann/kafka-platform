@@ -1,0 +1,116 @@
+---
+- name: Install JMX Exporter on Kafka nodes
+  hosts: kafka_broker:kafka_controller
+  become: true
+  vars:
+    jmx_exporter_version: "1.0.1"
+    jmx_exporter_port_broker: 9999
+    jmx_exporter_port_controller: 9998
+
+  tasks:
+    - name: Create jmx_exporter directory
+      file:
+        path: /opt/jmx_exporter
+        state: directory
+        mode: '0755'
+
+    - name: Download JMX Exporter
+      get_url:
+        url: "https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/{{ jmx_exporter_version }}/jmx_prometheus_javaagent-{{ jmx_exporter_version }}.jar"
+        dest: /opt/jmx_exporter/jmx_prometheus_javaagent.jar
+        mode: '0644'
+
+    - name: Create JMX Exporter config for broker
+      copy:
+        dest: /opt/jmx_exporter/kafka-broker.yml
+        content: |
+          lowercaseOutputName: true
+          lowercaseOutputLabelNames: true
+          rules:
+            - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+              name: kafka_server_$1_$2
+              type: GAUGE
+              labels:
+                clientId: "$3"
+                topic: "$4"
+                partition: "$5"
+            - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+              name: kafka_server_$1_$2
+              type: GAUGE
+              labels:
+                clientId: "$3"
+                broker: "$4:$5"
+            - pattern: kafka.server<type=(.+), name=(.+)><>Value
+              name: kafka_server_$1_$2
+              type: GAUGE
+            - pattern: kafka.server<type=(.+), name=(.+)><>Count
+              name: kafka_server_$1_$2_count
+              type: COUNTER
+            - pattern: kafka.network<type=(.+), name=(.+), request=(.+)><>Count
+              name: kafka_network_$1_$2_count
+              type: COUNTER
+              labels:
+                request: "$3"
+            - pattern: kafka.network<type=(.+), name=(.+)><>Value
+              name: kafka_network_$1_$2
+              type: GAUGE
+            - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+              name: kafka_controller_$1_$2
+              type: GAUGE
+            - pattern: kafka.log<type=(.+), name=(.+)><>Value
+              name: kafka_log_$1_$2
+              type: GAUGE
+      when: "'kafka_broker' in group_names"
+
+    - name: Create JMX Exporter config for controller
+      copy:
+        dest: /opt/jmx_exporter/kafka-controller.yml
+        content: |
+          lowercaseOutputName: true
+          lowercaseOutputLabelNames: true
+          rules:
+            - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+              name: kafka_controller_$1_$2
+              type: GAUGE
+            - pattern: kafka.server<type=(.+), name=(.+)><>Value
+              name: kafka_server_$1_$2
+              type: GAUGE
+            - pattern: "org.apache.kafka.raft<type=(.+), name=(.+)><>(.+):"
+              name: kafka_raft_$1_$2_$3
+              type: GAUGE
+      when: "'kafka_controller' in group_names"
+
+    - name: Add JMX Exporter to broker service
+      lineinfile:
+        path: /etc/systemd/system/confluent-server.service.d/override.conf
+        create: yes
+        line: "Environment='KAFKA_OPTS=-javaagent:/opt/jmx_exporter/jmx_prometheus_javaagent.jar={{ jmx_exporter_port_broker }}:/opt/jmx_exporter/kafka-broker.yml'"
+        regexp: '^Environment.*jmx_prometheus'
+      when: "'kafka_broker' in group_names"
+      notify: Restart broker
+
+    - name: Add JMX Exporter to controller service
+      lineinfile:
+        path: /etc/systemd/system/confluent-kcontroller.service.d/override.conf
+        create: yes
+        line: "Environment='KAFKA_OPTS=-javaagent:/opt/jmx_exporter/jmx_prometheus_javaagent.jar={{ jmx_exporter_port_controller }}:/opt/jmx_exporter/kafka-controller.yml'"
+        regexp: '^Environment.*jmx_prometheus'
+      when: "'kafka_controller' in group_names"
+      notify: Restart controller
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+  handlers:
+    - name: Restart broker
+      systemd:
+        name: confluent-server
+        state: restarted
+      when: "'kafka_broker' in group_names"
+
+    - name: Restart controller
+      systemd:
+        name: confluent-kcontroller
+        state: restarted
+      when: "'kafka_controller' in group_names"

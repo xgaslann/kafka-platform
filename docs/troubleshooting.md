@@ -30,7 +30,7 @@ aws ec2 authorize-security-group-ingress \
   --group-id sg-0fb88a5b26c116cea \
   --protocol tcp \
   --port 22 \
-  --cidr "<NEW_PUBLIC_IP>/32"
+  --cidr "159.146.17.211/32"
 ```
 
 ---
@@ -166,6 +166,62 @@ Unit confluent-kafka.service not found
 | Controller | confluent-kcontroller |
 | Broker | confluent-server |
 | Connect | confluent-kafka-connect |
+
+---
+
+## 7. Ansible Callback Plugin Error
+
+I ran:
+```bash
+ansible-playbook -i inventory/hosts.yml playbooks/monitoring-stack.yml
+```
+
+Got:
+```
+[ERROR]: The 'community.general.yaml' callback plugin has been removed.
+```
+
+**What happened:** Ansible callback plugin syntax changed in newer versions.
+
+**How I fixed it:**
+
+Changed ansible.cfg:
+```ini
+# Old
+stdout_callback = yaml
+
+# New
+stdout_callback = ansible.builtin.default
+result_format = yaml
+```
+
+---
+
+## 8. Broker OOM Kill
+
+I ran:
+```bash
+sudo systemctl status confluent-server
+```
+
+Got:
+```
+Active: failed (Result: oom-kill)
+```
+
+**What happened:** Kafka + JMX Exporter using too much memory on t3.small (2GB RAM).
+
+**How I fixed it:**
+
+Restart the broker:
+```bash
+sudo systemctl restart confluent-server
+```
+
+If it keeps happening, options:
+- Increase instance size
+- Tune JVM heap settings
+- Reduce JMX Exporter scrape interval
 
 ---
 

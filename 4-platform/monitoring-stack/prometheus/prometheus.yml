@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter - all nodes
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets:
+          - '10.0.101.10:9100'   # controller-1
+          - '10.0.102.10:9100'   # controller-2
+          - '10.0.103.10:9100'   # controller-3
+          - '10.0.101.166:9100'  # broker-1
+          - '10.0.102.239:9100'  # broker-2
+          - '10.0.103.53:9100'   # broker-3
+          - '10.0.101.25:9100'   # kafka-connect
+          - '10.0.101.207:9100'  # platform
+
+  # Kafka Broker JMX
+  - job_name: 'kafka_broker'
+    static_configs:
+      - targets:
+          - '10.0.101.166:9999'  # broker-1
+          - '10.0.102.239:9999'  # broker-2
+          - '10.0.103.53:9999'   # broker-3
+
+  # Kafka Controller JMX
+  - job_name: 'kafka_controller'
+    static_configs:
+      - targets:
+          - '10.0.101.10:9998'   # controller-1
+          - '10.0.102.10:9998'   # controller-2
+          - '10.0.103.10:9998'   # controller-3
