@@ -4,8 +4,7 @@
 
 ## About
 
-Kafka cluster is deployed using Confluent's official Ansible collection (cp-ansible). The cluster runs in KRaft mode, eliminating the need for ZooKeeper.  
-There are 3 controllers and 3 brokers for high availability.
+Kafka cluster is deployed using Confluent's official Ansible collection (cp-ansible). The cluster runs in KRaft mode - no ZooKeeper dependency. This is the new standard for Kafka 4.x and beyond.
 
 Security is configured with SASL_SSL and SCRAM-SHA-512 authentication. Self-signed certificates are used for development, but the setup is ready for proper CA certificates in production.
 
@@ -137,12 +136,21 @@ sudo systemctl status confluent-server
 sudo journalctl -u confluent-server -f
 ```
 
+## JMX Exporter
+
+JMX Exporter installed separately for Prometheus metrics. See [Observability](./03-observability.md).
+
+| Node | Port |
+|------|------|
+| Broker | 9999 |
+| Controller | 9998 |
+
 ## Verification
 
 SSH into a broker and check cluster status:
 
 ```bash
-ssh -i ~/.ssh/kafka-platform-key ubuntu@
+ssh -i ~/.ssh/kafka-platform-key ubuntu@<BROKER_IP>
 ```
 
 ```bash

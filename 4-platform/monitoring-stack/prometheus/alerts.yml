@@ -1,0 +1,88 @@
+groups:
+  - name: infrastructure
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% (current: {{ $value | printf \"%.1f\" }}%)"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk space is below 20% (current: {{ $value | printf \"%.1f\" }}%)"
+
+      - alert: HighCpuLoad
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU load on {{ $labels.instance }}"
+          description: "CPU load is above 80% (current: {{ $value | printf \"%.1f\" }}%)"
+
+  - name: kafka
+    rules:
+      - alert: UnderReplicatedPartitions
+        expr: kafka_server_replicamanager_underreplicatedpartitions > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Under-replicated partitions detected"
+          description: "{{ $value }} under-replicated partitions on {{ $labels.instance }}"
+
+      - alert: HighRequestLatency
+        expr: kafka_network_requestmetrics_totaltimems{quantile="0.95"} > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency on {{ $labels.instance }}"
+          description: "P95 request latency is above 100ms (current: {{ $value | printf \"%.1f\" }}ms)"
+
+  # Kafka Connect alerts - will be configured after Section 5
+  - name: kafka_connect
+    rules:
+      - alert: ConnectorFailed
+        expr: kafka_connect_connector_status{status="failed"} > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Connect connector failed"
+          description: "Connector {{ $labels.connector }} is in failed state"
+
+      - alert: TaskFailed
+        expr: kafka_connect_task_status{status="failed"} > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Connect task failed"
+          description: "Task {{ $labels.task }} of connector {{ $labels.connector }} is in failed state"
+
+      - alert: HighProducerIncomingByteRate
+        expr: kafka_connect_producer_incoming_byte_rate > 10000000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High producer incoming byte rate"
+          description: "Producer incoming byte rate is too high (current: {{ $value | humanize }})"

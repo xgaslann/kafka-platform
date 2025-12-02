@@ -88,7 +88,7 @@ ssh -i ~/.ssh/kafka-platform-key ubuntu@<BROKER_IP> \
 1. [Installation Guide](./INSTALLATION.md) - local setup
 2. [Infrastructure](./docs/01-infrastructure.md) - Terraform
 3. [Kafka Cluster](./docs/02-kafka-cluster.md) - cp-ansible
-4. [Observability](./docs/03-observability.md) *(will be updated)*
+4. [Observability](./docs/03-observability.md) - Prometheus, Grafana
 5. [REST API](./docs/04-rest-api.md) *(will be updated)*
 6. [Kafka Connect](./docs/05-kafka-connect.md) *(will be updated)*
 
@@ -96,10 +96,14 @@ ssh -i ~/.ssh/kafka-platform-key ubuntu@<BROKER_IP> \
 
 ## Screenshots
 
-> See [docs/screenshots](./docs/screenshots/) for AWS console screenshots.
+> See [docs/screenshots](./docs/screenshots/) for AWS console and monitoring screenshots.
 
-| Screenshot                                                | Description |
-|-----------------------------------------------------------|-------------|
-| [EC2 Dashboard](./docs/screenshots/ec2_dashboard.png)     | Running instances |
-| [Security Groups](./docs/screenshots/security_groups.png) | Inbound rules |
-| [VPC Subnets](./docs/screenshots/vpc_subnets.png)         | Subnet configuration |
+| Screenshot                                                            | Description |
+|-----------------------------------------------------------------------|-------------|
+| [EC2 Dashboard](./docs/screenshots/ec2_dashboard.png)                 | Running instances |
+| [Security Groups](./docs/screenshots/security_groups.png)             | Inbound rules |
+| [VPC Subnets](./docs/screenshots/vpc_subnets_1.png)                   | Subnet configuration |
+| [Prometheus Target_1](./docs/screenshots/prometheus_target_1.png)     | Monitoring targets |
+| [Prometheus Target_2](./docs/screenshots/prometheus_target_2.png)     | Monitoring targets |
+| [Grafana Broker](./docs/screenshots/grafana_kafka_broker.png)         | Broker dashboard |
+| [Grafana Controller](./docs/screenshots/grafana_kafka_controller.png) | Controller dashboard |
