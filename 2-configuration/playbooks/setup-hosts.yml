@@ -1,0 +1,12 @@
+---
+- name: Setup /etc/hosts for all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Add all Kafka nodes to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item].ansible_host }} {{ item }}"
+        state: present
+      loop: "{{ groups['all'] }}"
+      when: hostvars[item].ansible_host is defined

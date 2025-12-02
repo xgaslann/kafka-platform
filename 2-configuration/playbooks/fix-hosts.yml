@@ -1,0 +1,32 @@
+---
+- name: Fix /etc/hosts with private IPs
+  hosts: all
+  become: true
+  tasks:
+    - name: Remove old public IP entries
+      lineinfile:
+        path: /etc/hosts
+        regexp: ".*{{ item }}$"
+        state: absent
+      loop:
+        - controller-1
+        - controller-2
+        - controller-3
+        - broker-1
+        - broker-2
+        - broker-3
+        - kafka-connect-1
+
+    - name: Add private IP entries
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+        state: present
+      loop:
+        - "10.0.101.10 controller-1"
+        - "10.0.102.10 controller-2"
+        - "10.0.103.10 controller-3"
+        - "10.0.101.166 broker-1"
+        - "10.0.102.239 broker-2"
+        - "10.0.103.53 broker-3"
+        - "10.0.101.25 kafka-connect-1"
