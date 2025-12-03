@@ -1,0 +1,28 @@
+services:
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:8.1.0
+    hostname: kafka-connect-1
+    container_name: kafka-connect
+    network_mode: host
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: broker-1:9092,broker-2:9092,broker-3:9092
+      CONNECT_REST_PORT: 8083
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect-1
+      CONNECT_GROUP_ID: connect-cluster
+      CONNECT_CONFIG_STORAGE_TOPIC: connect-cluster-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: connect-cluster-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: connect-cluster-status
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+      KAFKA_JMX_PORT: 9997
+      KAFKA_JMX_HOSTNAME: localhost
+    volumes:
+      - connect-plugins:/usr/share/confluent-hub-components
+    restart: unless-stopped
+
+volumes:
+  connect-plugins:
