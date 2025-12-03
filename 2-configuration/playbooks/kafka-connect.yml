@@ -1,0 +1,143 @@
+---
+- name: Deploy Kafka Connect
+  hosts: kafka_connect
+  become: true
+
+  vars:
+    jmx_exporter_version: "0.20.0"
+
+  tasks:
+    - name: Add broker hostnames to /etc/hosts
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item }}"
+      loop:
+        - "10.0.101.166 broker-1"
+        - "10.0.102.239 broker-2"
+        - "10.0.103.53 broker-3"
+
+    - name: Create kafka-connect directory
+      file:
+        path: /opt/kafka-connect
+        state: directory
+        mode: '0755'
+
+    - name: Create JMX exporter directory
+      file:
+        path: /opt/kafka-connect/jmx-exporter
+        state: directory
+        mode: '0755'
+
+    - name: Download JMX Exporter
+      get_url:
+        url: "https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/{{ jmx_exporter_version }}/jmx_prometheus_javaagent-{{ jmx_exporter_version }}.jar"
+        dest: /opt/kafka-connect/jmx-exporter/jmx_prometheus_javaagent.jar
+        mode: '0644'
+
+    - name: Create JMX Exporter config
+      copy:
+        dest: /opt/kafka-connect/jmx-exporter/kafka-connect.yml
+        mode: '0644'
+        content: |
+          lowercaseOutputName: true
+          lowercaseOutputLabelNames: true
+          rules:
+            - pattern: 'kafka.connect<type=connector-metrics, connector=(.+)><>(.+): (.+)'
+              name: kafka_connect_connector_$2
+              labels:
+                connector: $1
+              type: GAUGE
+            - pattern: 'kafka.connect<type=connector-task-metrics, connector=(.+), task=(.+)><>(.+): (.+)'
+              name: kafka_connect_task_$3
+              labels:
+                connector: $1
+                task: $2
+              type: GAUGE
+            - pattern: 'kafka.connect<type=connect-worker-metrics><>(.+): (.+)'
+              name: kafka_connect_worker_$1
+              type: GAUGE
+
+    - name: Copy docker-compose file
+      copy:
+        dest: /opt/kafka-connect/docker-compose.yml
+        mode: '0644'
+        content: |
+          services:
+            kafka-connect:
+              image: confluentinc/cp-kafka-connect:8.1.0
+              hostname: kafka-connect-1
+              container_name: kafka-connect
+              network_mode: host
+              environment:
+                CONNECT_BOOTSTRAP_SERVERS: broker-1:9092,broker-2:9092,broker-3:9092
+                CONNECT_REST_PORT: 8083
+                CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect-1
+                CONNECT_GROUP_ID: connect-cluster
+                CONNECT_CONFIG_STORAGE_TOPIC: connect-cluster-configs
+                CONNECT_OFFSET_STORAGE_TOPIC: connect-cluster-offsets
+                CONNECT_STATUS_STORAGE_TOPIC: connect-cluster-status
+                CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+                CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+                CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+                CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+                CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+                CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
+                EXTRA_ARGS: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent.jar=7071:/opt/jmx-exporter/kafka-connect.yml
+              volumes:
+                - connect-plugins:/usr/share/confluent-hub-components
+                - /opt/kafka-connect/jmx-exporter:/opt/jmx-exporter:ro
+              restart: unless-stopped
+          volumes:
+            connect-plugins:
+
+    - name: Stop existing containers
+      shell: cd /opt/kafka-connect && docker compose down || true
+      ignore_errors: true
+
+    - name: Start Kafka Connect
+      shell: cd /opt/kafka-connect && docker compose up -d
+
+    - name: Wait for Kafka Connect to be ready
+      uri:
+        url: "http://localhost:8083/"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Download HTTP Source Connector
+      get_url:
+        url: "https://github.com/castorm/kafka-connect-http/releases/download/v0.8.11/kafka-connect-http-0.8.11-plugin.tar.gz"
+        dest: /tmp/kafka-connect-http-0.8.11-plugin.tar.gz
+        mode: '0644'
+
+    - name: Extract HTTP Source Connector
+      unarchive:
+        src: /tmp/kafka-connect-http-0.8.11-plugin.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Copy plugin to container
+      shell: docker cp /tmp/kafka-connect-http kafka-connect:/usr/share/confluent-hub-components/
+
+    - name: Restart Kafka Connect to load plugin
+      shell: cd /opt/kafka-connect && docker compose restart
+
+    - name: Wait for Kafka Connect to be ready after plugin install
+      uri:
+        url: "http://localhost:8083/"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Verify HTTP Source Connector plugin loaded
+      uri:
+        url: "http://localhost:8083/connector-plugins"
+        return_content: yes
+      register: plugins
+      until: "'HttpSourceConnector' in plugins.content"
+      retries: 5
+      delay: 5
