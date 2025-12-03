@@ -17,15 +17,15 @@ Everything is modular - network and compute are separate Terraform modules. This
 
 ## Nodes
 
-| Node | Private IP | AZ |
-|------|------------|-----|
-| controller-1 | 10.0.101.10 | eu-central-1a |
-| controller-2 | 10.0.102.10 | eu-central-1b |
-| controller-3 | 10.0.103.10 | eu-central-1c |
+| Node | Private IP   | AZ |
+|------|--------------|-----|
+| controller-1 | 10.0.101.10  | eu-central-1a |
+| controller-2 | 10.0.102.10  | eu-central-1b |
+| controller-3 | 10.0.103.10  | eu-central-1c |
 | broker-1 | 10.0.101.166 | eu-central-1a |
 | broker-2 | 10.0.102.239 | eu-central-1b |
-| broker-3 | 10.0.103.53 | eu-central-1c |
-| kafka-connect | 10.0.101.25 | eu-central-1a |
+| broker-3 | 10.0.103.53  | eu-central-1c |
+| kafka-connect | 10.0.101.80  | eu-central-1a |
 | platform | 10.0.101.207 | eu-central-1a |
 
 ## Network
@@ -74,7 +74,7 @@ infrastructure_summary = {
     "private_ips" = ["10.0.101.10", "10.0.102.10", "10.0.103.10"]
   }
   "kafka_connect" = {
-    "private_ip" = "10.0.101.25"
+    "private_ip" = "10.0.101.80"
   }
   "platform" = {
     "private_ip" = "10.0.101.207"

@@ -86,7 +86,7 @@ docker restart kafka-connect
 ```bash
 mkdir -p /opt/kafka-connect/jmx-exporter
 wget -O /opt/kafka-connect/jmx-exporter/jmx_prometheus_javaagent.jar \
-  https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/0.20.0/jmx_prometheus_javaagent-0.20.0.jar
+  https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/1.0.1/jmx_prometheus_javaagent-1.0.1.jar
 ```
 
 ## Connector Configuration

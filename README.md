@@ -50,6 +50,21 @@ The goal was to have everything automated. Run a few commands, get a working clu
 
 Started with t3.small for brokers but kept getting OOM kills. Kafka + JMX Exporter needs more than 2GB RAM. Upgraded to m7i-flex.large (8GB) and problems went away.
 
+## Nodes
+
+> ⚠️ **IP Addresses May Change!**
+>
+> - **Public IPs**: Change when spot instance restarts
+> - **Private IPs**: Change when instance is recreated (except controllers - static IP)
+>
+> Files to update when IPs change:
+> - `2-configuration/inventory/hosts.yml` (public IPs)
+> - `2-configuration/playbooks/fix-hosts.yml` (private IPs)
+> - `4-platform/monitoring-stack/prometheus/prometheus.yml` (private IPs)
+> - Grafana dashboards (instance regex patterns)
+>
+> Get current IPs: `terraform output -json`
+
 ## Architecture
 ```
                             ┌─────────────────────────────────────┐
@@ -186,13 +201,13 @@ Having issues? Check [Troubleshooting](./docs/troubleshooting.md) - documented e
 
 ## Endpoints
 
-| Service | Port | Access |
-|---------|------|--------|
-| REST API | 2020 | http://platform:2020 |
-| Prometheus | 9090 | http://platform:9090 |
-| Grafana | 3000 | http://platform:3000 (admin/admin) |
-| Alertmanager | 9093 | http://platform:9093 |
-| Kafka Connect | 8083 | http://kafka-connect:8083 (VPC only) |
+| Service | Port | Access                                |
+|---------|------|---------------------------------------|
+| REST API | 2020 | http://platform:2020                  |
+| Prometheus | 9090 | http://platform:9090                  |
+| Grafana | 3000 | http://platform:3000 (admin/admin123) |
+| Alertmanager | 9093 | http://platform:9093                  |
+| Kafka Connect | 8083 | http://kafka-connect:8083 (VPC only)  |
 
 Kafka Connect REST API is only accessible from within VPC. Security group doesn't expose 8083 to internet.
 
@@ -264,6 +279,8 @@ Some things that bit me:
 4. **Security group changes**: When your IP changes, you lose access to everything. Keep the AWS CLI handy.
 
 5. **cp-ansible version compatibility**: Very specific about Python and Ansible versions. Check requirements first.
+
+6. **IP addresses change**: Spot instances get new public IPs on restart. Private IPs change if instance is recreated. Keep `terraform output` handy and update configs accordingly. Controller IPs are static (required for KRaft quorum).
 
 All documented in [Troubleshooting](./docs/troubleshooting.md).
 

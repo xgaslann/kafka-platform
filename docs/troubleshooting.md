@@ -370,6 +370,60 @@ curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job:
 
 ---
 
+## IP Change Checklist
+
+When instances restart or get recreated:
+
+### Public IP Changed (Spot restart)
+```bash
+# 1. Get new IPs
+cd 1-infrastructure/envs/dev
+terraform output -json | jq '.infrastructure_summary.value'
+
+# 2. Update hosts.yml
+nano ../../../2-configuration/inventory/hosts.yml
+
+# 3. Test Ansible connectivity
+cd ../../../2-configuration
+ansible all -m ping
+```
+
+### Private IP Changed (Instance recreate)
+```bash
+# 1. Get new IPs
+terraform output -json | jq '.infrastructure_summary.value'
+
+# 2. Update these files:
+# - 2-configuration/playbooks/fix-hosts.yml
+# - 4-platform/monitoring-stack/prometheus/prometheus.yml
+# - 4-platform/monitoring-stack/grafana/provisioning/dashboards/*.json (instance regex)
+
+# 3. Update /etc/hosts on all nodes
+ansible-playbook -i inventory/hosts.yml playbooks/fix-hosts.yml
+
+# 4. Restart Prometheus
+ssh ubuntu@<PLATFORM_IP> "cd /opt/monitoring && docker compose restart prometheus"
+```
+
+### Files to Update
+
+| Scenario | File | What to Update |
+|----------|------|----------------|
+| Public IP changed | `inventory/hosts.yml` | ansible_host values |
+| Private IP changed | `playbooks/fix-hosts.yml` | /etc/hosts entries |
+| Private IP changed | `prometheus/prometheus.yml` | scrape targets |
+| Private IP changed | `grafana/dashboards/*.json` | instance regex patterns |
+| Private IP changed | `playbooks/kafka-admin-api.yml` | kafka_bootstrap value |
+
+### Static IPs (Never Change)
+
+Controllers use static IPs (required for KRaft quorum):
+- controller-1: 10.0.101.10
+- controller-2: 10.0.102.10
+- controller-3: 10.0.103.10
+
+These are defined in Terraform and remain the same even if instance is recreated.
+
 ## Checklist Before Running Playbook
 
 - [ ] `which ansible` shows .venv/bin/ansible
