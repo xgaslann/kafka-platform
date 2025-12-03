@@ -27,7 +27,7 @@ scrape_configs:
           - '10.0.101.166:9100'  # broker-1
           - '10.0.102.239:9100'  # broker-2
           - '10.0.103.53:9100'   # broker-3
-          - '10.0.101.25:9100'   # kafka-connect
+          - '10.0.101.80:9100'   # kafka-connect
           - '10.0.101.207:9100'  # platform
 
   # Kafka Broker JMX
@@ -45,3 +45,9 @@ scrape_configs:
           - '10.0.101.10:9998'   # controller-1
           - '10.0.102.10:9998'   # controller-2
           - '10.0.103.10:9998'   # controller-3
+
+  # Kafka Connect JMX
+  - job_name: 'kafka_connect'
+    static_configs:
+      - targets:
+          - '10.0.101.80:7071'   # kafka-connect

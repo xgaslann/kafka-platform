@@ -53,7 +53,7 @@ variable "key_name" {
 variable "broker_count" {
   description = "Number of Kafka broker instances"
   type        = number
-  default     = 4
+  default     = 3
 
   validation {
     condition     = var.broker_count >= 3

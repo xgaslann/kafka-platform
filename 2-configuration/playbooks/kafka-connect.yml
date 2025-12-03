@@ -4,7 +4,7 @@
   become: true
 
   vars:
-    jmx_exporter_version: "0.20.0"
+    jmx_exporter_version: "1.0.1"
 
   tasks:
     - name: Add broker hostnames to /etc/hosts

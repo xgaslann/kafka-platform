@@ -183,7 +183,7 @@
       },
       "targets": [
         {
-          "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\", instance=~\"10.0.101.25.*\"}[5m])) * 100)",
+          "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\", instance=~\"10.0.101.80.*\"}[5m])) * 100)",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }
@@ -211,7 +211,7 @@
       },
       "targets": [
         {
-          "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"10.0.101.25.*\"} / node_memory_MemTotal_bytes{instance=~\"10.0.101.25.*\"})) * 100",
+          "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"10.0.101.80.*\"} / node_memory_MemTotal_bytes{instance=~\"10.0.101.80.*\"})) * 100",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }

@@ -37,7 +37,7 @@ variable "key_name" {
 variable "broker_count" {
   description = "Number of Kafka brokers"
   type        = number
-  default     = 4
+  default     = 3
 }
 
 variable "broker_instance_type" {
