@@ -25,7 +25,7 @@ The goal was to have everything automated. Run a few commands, get a working clu
 
 **Go for REST API**: Fast, single binary, great Kafka client library. Could have used Python but Go felt right for this.
 
-**PLAINTEXT security**: Yeah, I know. Started with SASL_SSL but ran into certificate issues with cp-ansible. Works for demo purposes. In production you'd definitely want encryption.
+**PLAINTEXT security**: Started with SASL_SSL but ran into certificate issues with cp-ansible. Works for demo purposes. In production you'd definitely want encryption.
 
 ## Sections
 
