@@ -27,6 +27,8 @@ The goal was to have everything automated. Run a few commands, get a working clu
 
 **PLAINTEXT security**: Started with SASL_SSL but ran into certificate issues with cp-ansible. Works for demo purposes. In production you'd definitely want encryption.
 
+I tried to explain the steps and errors I encountered while building the system. If you follow the instructions with the codebase and run into any issues during the implementation, you can check the [Troubleshooting](./docs/troubleshooting.md) documentation.
+
 ## Sections
 
 | # | Section | What I built |
