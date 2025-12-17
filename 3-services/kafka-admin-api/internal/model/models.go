@@ -62,3 +62,21 @@ type TopicPartition struct {
 	Offset    int64  `json:"offset"`
 	Lag       int64  `json:"lag"`
 }
+
+// Consumer Message
+type Message struct {
+	Topic     string            `json:"topic"`
+	Partition int32             `json:"partition"`
+	Offset    int64             `json:"offset"`
+	Key       string            `json:"key,omitempty"`
+	Value     string            `json:"value"`
+	Timestamp int64             `json:"timestamp"`
+	Headers   map[string]string `json:"headers,omitempty"`
+}
+
+// Consume Request
+type ConsumeRequest struct {
+	GroupID     string `json:"group_id" validate:"required"`
+	AutoOffset  string `json:"auto_offset"`  // earliest, latest
+	MaxMessages int    `json:"max_messages"` // 0 = unlimited
+}

@@ -2,10 +2,7 @@
   "id": null,
   "uid": "kafka-connect",
   "title": "Kafka Connect",
-  "tags": [
-    "kafka",
-    "connect"
-  ],
+  "tags": ["kafka", "connect"],
   "timezone": "browser",
   "schemaVersion": 38,
   "version": 1,
@@ -13,219 +10,72 @@
   "panels": [
     {
       "id": 1,
-      "title": "Total Worker Count",
+      "title": "Worker Count",
       "type": "stat",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 0,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "count(up{job=\"kafka_connect\"} == 1)",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "targets": [{"expr": "count(up{job=\"kafka_connect\"} == 1)", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"}
     },
     {
       "id": 2,
-      "title": "Total Connector Count",
+      "title": "Connector Count",
       "type": "stat",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 4,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "kafka_connect_worker_connector_count",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "targets": [{"expr": "kafka_connect_worker_connector_count or vector(0)", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"}
     },
     {
       "id": 3,
       "title": "Running Connectors",
       "type": "stat",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 8,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "count(kafka_connect_connector_status{status=\"running\"})",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "targets": [{"expr": "(kafka_connect_worker_connector_count - kafka_connect_worker_connector_startup_failure) or vector(0)", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}}
     },
     {
       "id": 4,
       "title": "Failed Connectors",
       "type": "stat",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "count(kafka_connect_connector_status{status=\"failed\"}) or vector(0)",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          }
-        }
-      }
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "targets": [{"expr": "kafka_connect_worker_connector_startup_failure or vector(0)", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}}
     },
     {
       "id": 5,
-      "title": "Total Task Count",
+      "title": "Task Count",
       "type": "stat",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 16,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "kafka_connect_worker_task_count",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      }
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "targets": [{"expr": "kafka_connect_worker_task_count or vector(0)", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"}
     },
     {
       "id": 6,
       "title": "Failed Tasks",
       "type": "stat",
-      "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 20,
-        "y": 0
-      },
-      "targets": [
-        {
-          "expr": "count(kafka_connect_task_status{status=\"failed\"}) or vector(0)",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          }
-        }
-      }
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "targets": [{"expr": "kafka_connect_worker_task_startup_failure or vector(0)", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}}
     },
     {
       "id": 7,
       "title": "CPU Usage",
       "type": "timeseries",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 4
-      },
-      "targets": [
-        {
-          "expr": "100 - (avg by(instance) (irate(node_cpu_seconds_total{mode=\"idle\", instance=~\"10.0.101.80.*\"}[5m])) * 100)",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "max": 100
-        }
-      }
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{"expr": "100 - (avg by(hostname) (irate(node_cpu_seconds_total{mode=\"idle\", role=\"connect\"}[5m])) * 100)", "legendFormat": "{{hostname}}", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "max": 100}}
     },
     {
       "id": 8,
       "title": "Memory Usage",
       "type": "timeseries",
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 4
-      },
-      "targets": [
-        {
-          "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"10.0.101.80.*\"} / node_memory_MemTotal_bytes{instance=~\"10.0.101.80.*\"})) * 100",
-          "legendFormat": "{{instance}}",
-          "refId": "A"
-        }
-      ],
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "max": 100
-        }
-      }
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{"expr": "(1 - (node_memory_MemAvailable_bytes{role=\"connect\"} / node_memory_MemTotal_bytes{role=\"connect\"})) * 100", "legendFormat": "{{hostname}}", "refId": "A"}],
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent", "max": 100}}
     }
   ]
 }

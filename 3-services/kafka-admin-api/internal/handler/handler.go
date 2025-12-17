@@ -1,9 +1,15 @@
 package handler
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
+	"fmt"
 	"log/slog"
+	"strconv"
+	"time"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -12,7 +18,6 @@ import (
 	"kafka-admin-api/internal/model"
 )
 
-// KafkaClient interface for testing
 type KafkaClient interface {
 	ListBrokers(ctx context.Context) ([]model.Broker, error)
 	ListTopics(ctx context.Context) ([]model.Topic, error)
@@ -21,6 +26,8 @@ type KafkaClient interface {
 	UpdateTopicConfig(ctx context.Context, name string, configs map[string]string) error
 	ListConsumerGroups(ctx context.Context) ([]model.ConsumerGroup, error)
 	GetConsumerGroup(ctx context.Context, groupID string) (*model.ConsumerGroupDetail, error)
+	CreateConsumer(groupID, autoOffset string) (*kafka.Consumer, error)
+	ConsumeMessages(ctx context.Context, topic, groupID, autoOffset string, maxMessages int, msgChan chan<- model.Message) error
 	Close()
 }
 
@@ -38,7 +45,6 @@ func New(client KafkaClient, logger *slog.Logger) *Handler {
 	}
 }
 
-// NewWithClient alias for testing
 func NewWithClient(client KafkaClient, logger *slog.Logger) *Handler {
 	return New(client, logger)
 }
@@ -56,6 +62,8 @@ func (h *Handler) SetupRoutes(app *fiber.App) {
 	app.Put("/topics/:topicName", h.updateTopic)
 	app.Get("/consumer-groups", h.listConsumerGroups)
 	app.Get("/consumer-groups/:groupID", h.getConsumerGroup)
+	app.Get("/topics/:topicName/consume", h.consumeMessagesBatch)
+	app.Get("/topics/:topicName/messages", h.consumeMessagesSSE)
 }
 
 func (h *Handler) loggingMiddleware(c *fiber.Ctx) error {
@@ -165,4 +173,188 @@ func (h *Handler) getConsumerGroup(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(group)
+}
+
+func (h *Handler) consumeMessagesBatch(c *fiber.Ctx) error {
+	topicName := c.Params("topicName")
+	if topicName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "topic name required"})
+	}
+
+	groupID := c.Query("group_id", "kafka-admin-api-batch-consumer")
+	autoOffset := c.Query("offset", "earliest")
+	maxMessagesStr := c.Query("max", "10")
+	timeoutStr := c.Query("timeout", "5")
+
+	maxMessages, _ := strconv.Atoi(maxMessagesStr)
+	timeout, _ := strconv.Atoi(timeoutStr)
+
+	if maxMessages <= 0 {
+		maxMessages = 10
+	}
+	if timeout <= 0 {
+		timeout = 5
+	}
+
+	h.logger.Info("starting batch consumer",
+		"topic", topicName,
+		"group_id", groupID,
+		"offset", autoOffset,
+		"max_messages", maxMessages,
+		"timeout", timeout,
+	)
+
+	consumer, err := h.client.CreateConsumer(groupID, autoOffset)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer consumer.Close()
+
+	if err := consumer.Subscribe(topicName, nil); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	messages := make([]model.Message, 0, maxMessages)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	for len(messages) < maxMessages {
+		select {
+		case <-ctx.Done():
+			goto done
+		default:
+			msg, err := consumer.ReadMessage(100 * time.Millisecond)
+			if err != nil {
+				if err.(kafka.Error).Code() == kafka.ErrTimedOut {
+					continue
+				}
+				continue
+			}
+
+			headers := make(map[string]string)
+			for _, hdr := range msg.Headers {
+				headers[hdr.Key] = string(hdr.Value)
+			}
+
+			messages = append(messages, model.Message{
+				Topic:     *msg.TopicPartition.Topic,
+				Partition: msg.TopicPartition.Partition,
+				Offset:    int64(msg.TopicPartition.Offset),
+				Key:       string(msg.Key),
+				Value:     string(msg.Value),
+				Timestamp: msg.Timestamp.UnixMilli(),
+				Headers:   headers,
+			})
+		}
+	}
+
+done:
+	h.logger.Info("batch consumer finished", "messages", len(messages))
+	return c.JSON(fiber.Map{
+		"topic":    topicName,
+		"group_id": groupID,
+		"count":    len(messages),
+		"messages": messages,
+	})
+}
+
+func (h *Handler) consumeMessagesSSE(c *fiber.Ctx) error {
+	topicName := c.Params("topicName")
+	if topicName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "topic name required"})
+	}
+
+	groupID := c.Query("group_id", "kafka-admin-api-sse-consumer")
+	autoOffset := c.Query("offset", "earliest")
+	maxMessagesStr := c.Query("max", "0")
+
+	maxMessages, _ := strconv.Atoi(maxMessagesStr)
+
+	h.logger.Info("starting SSE consumer",
+		"topic", topicName,
+		"group_id", groupID,
+		"offset", autoOffset,
+		"max_messages", maxMessages,
+	)
+
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("Transfer-Encoding", "chunked")
+
+	// Capture variables for closure
+	client := h.client
+	logger := h.logger
+
+	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		consumer, err := client.CreateConsumer(groupID, autoOffset)
+		if err != nil {
+			logger.Error("failed to create consumer", "error", err)
+			fmt.Fprintf(w, "event: error\ndata: {\"error\": \"%s\"}\n\n", err.Error())
+			w.Flush()
+			return
+		}
+		defer consumer.Close()
+
+		if err := consumer.Subscribe(topicName, nil); err != nil {
+			logger.Error("failed to subscribe", "error", err)
+			fmt.Fprintf(w, "event: error\ndata: {\"error\": \"%s\"}\n\n", err.Error())
+			w.Flush()
+			return
+		}
+
+		logger.Info("SSE consumer subscribed", "topic", topicName)
+
+		count := 0
+		for {
+			msg, err := consumer.ReadMessage(500 * time.Millisecond)
+			if err != nil {
+				if err.(kafka.Error).Code() == kafka.ErrTimedOut {
+					// Send heartbeat
+					fmt.Fprintf(w, ": heartbeat\n\n")
+					if err := w.Flush(); err != nil {
+						logger.Info("client disconnected")
+						return
+					}
+					continue
+				}
+				logger.Error("read error", "error", err)
+				continue
+			}
+
+			headers := make(map[string]string)
+			for _, hdr := range msg.Headers {
+				headers[hdr.Key] = string(hdr.Value)
+			}
+
+			m := model.Message{
+				Topic:     *msg.TopicPartition.Topic,
+				Partition: msg.TopicPartition.Partition,
+				Offset:    int64(msg.TopicPartition.Offset),
+				Key:       string(msg.Key),
+				Value:     string(msg.Value),
+				Timestamp: msg.Timestamp.UnixMilli(),
+				Headers:   headers,
+			}
+
+			data, _ := json.Marshal(m)
+			fmt.Fprintf(w, "event: message\ndata: %s\n\n", data)
+			if err := w.Flush(); err != nil {
+				logger.Info("client disconnected during write")
+				return
+			}
+
+			count++
+			logger.Info("SSE message sent", "count", count, "offset", m.Offset)
+
+			if maxMessages > 0 && count >= maxMessages {
+				fmt.Fprintf(w, "event: done\ndata: {\"total_messages\": %d}\n\n", count)
+				w.Flush()
+				logger.Info("SSE max messages reached", "count", count)
+				return
+			}
+		}
+	})
+
+	return nil
 }

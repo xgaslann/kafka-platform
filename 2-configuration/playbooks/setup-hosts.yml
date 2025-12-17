@@ -3,10 +3,18 @@
   hosts: all
   become: true
   tasks:
-    - name: Add all Kafka nodes to /etc/hosts
+    - name: Clear old Kafka entries from /etc/hosts
       lineinfile:
         path: /etc/hosts
-        line: "{{ hostvars[item].ansible_host }} {{ item }}"
+        regexp: '.*{{ item }}.*'
+        state: absent
+      loop: "{{ groups['all'] }}"
+      when: item != 'localhost'
+
+    - name: Add all Kafka nodes to /etc/hosts with private IPs
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ hostvars[item].private_ip }} {{ item }}"
         state: present
       loop: "{{ groups['all'] }}"
-      when: hostvars[item].ansible_host is defined
+      when: hostvars[item].private_ip is defined

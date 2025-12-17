@@ -1,5 +1,5 @@
 ---
-- name: Deploy Kafka Connect
+- name: Deploy Kafka Connect with Docker Compose
   hosts: kafka_connect
   become: true
 
@@ -7,14 +7,51 @@
     jmx_exporter_version: "1.0.1"
 
   tasks:
-    - name: Add broker hostnames to /etc/hosts
-      lineinfile:
-        path: /etc/hosts
-        line: "{{ item }}"
-      loop:
-        - "10.0.101.166 broker-1"
-        - "10.0.102.239 broker-2"
-        - "10.0.103.53 broker-3"
+    - name: Install Docker dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg --yes
+      args:
+        creates: /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Start Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Stop cp-ansible deployed Kafka Connect service
+      systemd:
+        name: confluent-kafka-connect
+        state: stopped
+        enabled: no
+      ignore_errors: true
 
     - name: Create kafka-connect directory
       file:
@@ -57,7 +94,7 @@
               name: kafka_connect_worker_$1
               type: GAUGE
 
-    - name: Copy docker-compose file
+    - name: Create docker-compose.yml
       copy:
         dest: /opt/kafka-connect/docker-compose.yml
         mode: '0644'
@@ -65,13 +102,13 @@
           services:
             kafka-connect:
               image: confluentinc/cp-kafka-connect:8.1.0
-              hostname: kafka-connect-1
+              hostname: connect-1
               container_name: kafka-connect
               network_mode: host
               environment:
-                CONNECT_BOOTSTRAP_SERVERS: broker-1:9092,broker-2:9092,broker-3:9092
+                CONNECT_BOOTSTRAP_SERVERS: "{{ groups['kafka_broker'] | map('extract', hostvars, 'private_ip') | map('regex_replace', '$', ':9092') | join(',') }}"
                 CONNECT_REST_PORT: 8083
-                CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect-1
+                CONNECT_REST_ADVERTISED_HOST_NAME: connect-1
                 CONNECT_GROUP_ID: connect-cluster
                 CONNECT_CONFIG_STORAGE_TOPIC: connect-cluster-configs
                 CONNECT_OFFSET_STORAGE_TOPIC: connect-cluster-offsets
@@ -82,7 +119,7 @@
                 CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
                 CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.storage.StringConverter
                 CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
-                EXTRA_ARGS: -javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent.jar=7071:/opt/jmx-exporter/kafka-connect.yml
+                KAFKA_OPTS: "-javaagent:/opt/jmx-exporter/jmx_prometheus_javaagent.jar=7071:/opt/jmx-exporter/kafka-connect.yml"
               volumes:
                 - connect-plugins:/usr/share/confluent-hub-components
                 - /opt/kafka-connect/jmx-exporter:/opt/jmx-exporter:ro
@@ -90,7 +127,7 @@
           volumes:
             connect-plugins:
 
-    - name: Stop existing containers
+    - name: Stop existing Docker containers
       shell: cd /opt/kafka-connect && docker compose down || true
       ignore_errors: true
 
@@ -141,3 +178,7 @@
       until: "'HttpSourceConnector' in plugins.content"
       retries: 5
       delay: 5
+
+    - name: Show available plugins
+      debug:
+        var: plugins.json

@@ -4,17 +4,147 @@
   become: true
 
   tasks:
-    - name: Create monitoring directory
+    - name: Install Docker dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg --yes
+      args:
+        creates: /usr/share/keyrings/docker-archive-keyring.gpg
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Start Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create monitoring directories
       file:
-        path: /opt/monitoring
+        path: "{{ item }}"
         state: directory
         mode: '0755'
+      loop:
+        - /opt/monitoring
+        - /opt/monitoring/prometheus
+        - /opt/monitoring/alertmanager
+        - /opt/monitoring/grafana
+        - /opt/monitoring/grafana/provisioning
+        - /opt/monitoring/grafana/provisioning/datasources
+        - /opt/monitoring/grafana/provisioning/dashboards
 
-    - name: Copy monitoring stack files
-      copy:
-        src: ../../4-platform/monitoring-stack/
-        dest: /opt/monitoring/
+    - name: Generate Prometheus config from template
+      template:
+        src: ../../4-platform/monitoring-stack/prometheus/prometheus.yml.j2
+        dest: /opt/monitoring/prometheus/prometheus.yml
         mode: '0644'
+
+    - name: Copy Prometheus alerts
+      copy:
+        src: ../../4-platform/monitoring-stack/prometheus/alerts.yml
+        dest: /opt/monitoring/prometheus/alerts.yml
+        mode: '0644'
+
+    - name: Copy Alertmanager config
+      copy:
+        src: ../../4-platform/monitoring-stack/alertmanager/alertmanager.yml
+        dest: /opt/monitoring/alertmanager/alertmanager.yml
+        mode: '0644'
+
+    - name: Copy Grafana datasource config
+      copy:
+        src: ../../4-platform/monitoring-stack/grafana/provisioning/datasources/datasource.yml
+        dest: /opt/monitoring/grafana/provisioning/datasources/datasources.yml
+        mode: '0644'
+
+    - name: Copy Grafana dashboard provisioning config
+      copy:
+        src: ../../4-platform/monitoring-stack/grafana/provisioning/dashboards/dashboards.yml
+        dest: /opt/monitoring/grafana/provisioning/dashboards/dashboards.yml
+        mode: '0644'
+
+    - name: Copy Grafana dashboards
+      copy:
+        src: "{{ item }}"
+        dest: /opt/monitoring/grafana/provisioning/dashboards/
+        mode: '0644'
+      with_fileglob:
+        - ../../4-platform/monitoring-stack/grafana/provisioning/dashboards/*.json
+
+    - name: Create docker-compose.yml
+      copy:
+        dest: /opt/monitoring/docker-compose.yml
+        mode: '0644'
+        content: |
+          services:
+            prometheus:
+              image: prom/prometheus:v2.47.0
+              container_name: prometheus
+              ports:
+                - "9090:9090"
+              volumes:
+                - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+                - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+                - prometheus_data:/prometheus
+              command:
+                - '--config.file=/etc/prometheus/prometheus.yml'
+                - '--storage.tsdb.path=/prometheus'
+                - '--web.enable-lifecycle'
+              restart: unless-stopped
+
+            alertmanager:
+              image: prom/alertmanager:v0.26.0
+              container_name: alertmanager
+              ports:
+                - "9093:9093"
+              volumes:
+                - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+              restart: unless-stopped
+
+            grafana:
+              image: grafana/grafana:10.1.0
+              container_name: grafana
+              ports:
+                - "3000:3000"
+              environment:
+                - GF_SECURITY_ADMIN_PASSWORD=admin
+                - GF_USERS_ALLOW_SIGN_UP=false
+              volumes:
+                - grafana_data:/var/lib/grafana
+                - ./grafana/provisioning:/etc/grafana/provisioning:ro
+              restart: unless-stopped
+
+          volumes:
+            prometheus_data:
+            grafana_data:
+
+    - name: Stop existing containers
+      shell: cd /opt/monitoring && docker compose down || true
+      ignore_errors: true
 
     - name: Start monitoring stack
       shell: |
@@ -22,3 +152,21 @@
         docker compose up -d
       args:
         chdir: /opt/monitoring
+
+    - name: Wait for Prometheus to be ready
+      uri:
+        url: "http://localhost:9090/-/ready"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 5
+
+    - name: Wait for Grafana to be ready
+      uri:
+        url: "http://localhost:3000/api/health"
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 10
+      delay: 5

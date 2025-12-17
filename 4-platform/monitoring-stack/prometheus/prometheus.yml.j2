@@ -1,0 +1,62 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+rule_files:
+  - /etc/prometheus/alerts.yml
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node_exporter'
+    static_configs:
+{% for host in groups['kafka_controller'] %}
+      - targets: ['{{ hostvars[host].private_ip }}:9100']
+        labels:
+          role: controller
+          hostname: {{ host }}
+{% endfor %}
+{% for host in groups['kafka_broker'] %}
+      - targets: ['{{ hostvars[host].private_ip }}:9100']
+        labels:
+          role: broker
+          hostname: {{ host }}
+{% endfor %}
+{% for host in groups['kafka_connect'] %}
+      - targets: ['{{ hostvars[host].private_ip }}:9100']
+        labels:
+          role: connect
+          hostname: {{ host }}
+{% endfor %}
+{% for host in groups['platform'] %}
+      - targets: ['{{ hostvars[host].private_ip }}:9100']
+        labels:
+          role: platform
+          hostname: {{ host }}
+{% endfor %}
+
+  - job_name: 'kafka_broker'
+    static_configs:
+      - targets:
+{% for host in groups['kafka_broker'] %}
+          - '{{ hostvars[host].private_ip }}:9999'
+{% endfor %}
+
+  - job_name: 'kafka_controller'
+    static_configs:
+      - targets:
+{% for host in groups['kafka_controller'] %}
+          - '{{ hostvars[host].private_ip }}:9998'
+{% endfor %}
+
+  - job_name: 'kafka_connect'
+    static_configs:
+      - targets:
+{% for host in groups['kafka_connect'] %}
+          - '{{ hostvars[host].private_ip }}:7071'
+{% endfor %}

@@ -19,6 +19,7 @@ type Config struct {
 }
 
 type Client struct {
+	config Config
 	admin  *kafka.AdminClient
 	logger *slog.Logger
 }
@@ -28,7 +29,6 @@ func NewClient(cfg Config, logger *slog.Logger) (*Client, error) {
 		"bootstrap.servers": cfg.BootstrapServers,
 	}
 
-	// Add security config only if SASL credentials provided
 	if cfg.Username != "" && cfg.Password != "" {
 		_ = config.SetKey("security.protocol", "SASL_SSL")
 		_ = config.SetKey("sasl.mechanisms", "SCRAM-SHA-512")
@@ -45,7 +45,7 @@ func NewClient(cfg Config, logger *slog.Logger) (*Client, error) {
 	}
 
 	logger.Info("kafka admin client created", "bootstrap_servers", cfg.BootstrapServers)
-	return &Client{admin: admin, logger: logger}, nil
+	return &Client{config: cfg, admin: admin, logger: logger}, nil
 }
 
 func (c *Client) Close() {
@@ -252,4 +252,89 @@ func (c *Client) GetConsumerGroup(ctx context.Context, groupID string) (*model.C
 		},
 		Members: members,
 	}, nil
+}
+
+func (c *Client) CreateConsumer(groupID, autoOffset string) (*kafka.Consumer, error) {
+	config := &kafka.ConfigMap{
+		"bootstrap.servers":  c.config.BootstrapServers,
+		"group.id":           groupID,
+		"auto.offset.reset":  autoOffset,
+		"enable.auto.commit": true,
+	}
+
+	if c.config.Username != "" && c.config.Password != "" {
+		_ = config.SetKey("security.protocol", "SASL_SSL")
+		_ = config.SetKey("sasl.mechanisms", "SCRAM-SHA-512")
+		_ = config.SetKey("sasl.username", c.config.Username)
+		_ = config.SetKey("sasl.password", c.config.Password)
+		if c.config.CALocation != "" {
+			_ = config.SetKey("ssl.ca.location", c.config.CALocation)
+		}
+	}
+
+	consumer, err := kafka.NewConsumer(config)
+	if err != nil {
+		return nil, fmt.Errorf("create consumer: %w", err)
+	}
+
+	c.logger.Info("consumer created", "group_id", groupID)
+	return consumer, nil
+}
+
+func (c *Client) ConsumeMessages(ctx context.Context, topic, groupID, autoOffset string, maxMessages int, msgChan chan<- model.Message) error {
+	consumer, err := c.CreateConsumer(groupID, autoOffset)
+	if err != nil {
+		return err
+	}
+	defer consumer.Close()
+
+	if err := consumer.Subscribe(topic, nil); err != nil {
+		return fmt.Errorf("subscribe: %w", err)
+	}
+
+	c.logger.Info("consuming messages", "topic", topic, "group_id", groupID)
+
+	count := 0
+	for {
+		select {
+		case <-ctx.Done():
+			c.logger.Info("consumer stopped", "messages_consumed", count)
+			return nil
+		default:
+			msg, err := consumer.ReadMessage(100 * time.Millisecond)
+			if err != nil {
+				if err.(kafka.Error).Code() == kafka.ErrTimedOut {
+					continue
+				}
+				c.logger.Error("read message error", "error", err)
+				continue
+			}
+
+			headers := make(map[string]string)
+			for _, h := range msg.Headers {
+				headers[h.Key] = string(h.Value)
+			}
+
+			m := model.Message{
+				Topic:     *msg.TopicPartition.Topic,
+				Partition: msg.TopicPartition.Partition,
+				Offset:    int64(msg.TopicPartition.Offset),
+				Key:       string(msg.Key),
+				Value:     string(msg.Value),
+				Timestamp: msg.Timestamp.UnixMilli(),
+				Headers:   headers,
+			}
+
+			select {
+			case msgChan <- m:
+				count++
+				if maxMessages > 0 && count >= maxMessages {
+					c.logger.Info("max messages reached", "count", count)
+					return nil
+				}
+			case <-ctx.Done():
+				return nil
+			}
+		}
+	}
 }

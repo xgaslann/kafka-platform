@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -60,6 +61,19 @@ func (m *MockKafkaClient) GetConsumerGroup(ctx context.Context, groupID string) 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.ConsumerGroupDetail), args.Error(1)
+}
+
+func (m *MockKafkaClient) CreateConsumer(groupID, autoOffset string) (*kafka.Consumer, error) {
+	args := m.Called(groupID, autoOffset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*kafka.Consumer), args.Error(1)
+}
+
+func (m *MockKafkaClient) ConsumeMessages(ctx context.Context, topic, groupID, autoOffset string, maxMessages int, msgChan chan<- model.Message) error {
+	args := m.Called(ctx, topic, groupID, autoOffset, maxMessages, msgChan)
+	return args.Error(0)
 }
 
 func (m *MockKafkaClient) Close() {}
